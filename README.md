@@ -1,6 +1,6 @@
 # Modul CI-CD
 
-## Outline
+## Outline Materi
 
 1. [Introduction to CI/CD](#introduction-to-cicd)
 2. [Github Actions](#github-actions)
