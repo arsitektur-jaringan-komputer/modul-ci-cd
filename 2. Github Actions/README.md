@@ -68,12 +68,18 @@ Expression adalah cara untuk mengakses konteks pada workflow. Untuk menggunakan 
    - `${{ toJson(github) }}`
    - `${{ steps.<step_id>.outputs.<output_name> }}`
 
+Untuk detail lebih lengkap mengenai expressions dapat dilihat [di sini](https://docs.github.com/en/actions/learn-github-actions/expressions).
+
+### Contexts
+
+Context adalah informasi yang dapat diakses pada workflow. Context dapat berupa informasi tentang repository, event, atau runner. Context dapat diakses menggunakan expression. Detail context yang dapat digunakan dalam Github Action dapat dilihat [di sini](https://docs.github.com/en/actions/learn-github-actions/contexts).
+
 ### Variables
 
-Variable adalah cara untuk menyimpan nilai yang dapat digunakan pada workflow. Variable dapat ditambahkan langsung pada file workflow atau dari Github Secrets. Berikut adalah contoh deklarasi variable pada workflow.
+Variabel adalah cara untuk menyimpan nilai yang dapat digunakan pada workflow. Variabel dapat ditambahkan langsung pada file workflow atau dari Github Secrets. Berikut adalah contoh deklarasi variabel pada workflow.
 
 ```yaml
-name: Variable
+name: Variabel
 
 on: [push]
 
@@ -93,7 +99,9 @@ jobs:
           First_Name: Mona
 ```
 
-Untuk menambahkan secrets atau variables dalam repository, dapat dilakukan dengan cara berikut.
+Variabel hanya dapat diakses dalam scope yang sama. Sebagai contoh, variabel `Greeting` hanya dapat diakses pada job `greeting_job` dan variabel `First_Name` hanya dapat diakses pada step `Say Hello Mona it's Monday`.
+
+Untuk menambahkan secrets atau variabel dalam repository, dapat dilakukan dengan cara berikut.
 
 ![secrets](assets/secrets.png)
 
@@ -119,3 +127,96 @@ jobs:
         env:
           First_Name: Mona
 ```
+
+Untuk detail lebih lengkap mengenai variabel pada Github Actions dapat dilihat [di sini](https://docs.github.com/en/actions/learn-github-actions/variables).
+
+### Cache Dependencies
+
+Cache dependencies adalah cara untuk menyimpan dependencies yang telah diinstall pada runner. Cache dependencies dapat digunakan untuk mengurangi waktu yang dibutuhkan untuk menjalankan workflow. Beberapa dependencies yang tertera pada list berikut dapat langsung dikonfigurasi dengan menggunakan `setup-*` action.
+
+| Package Managers    | Cache Dependency Action |
+| ------------------- | ----------------------- |
+| npm, yarn, pnpm     | setup-node              |
+| pip, pipenv, poetry | setup-python            |
+| gradle, maven       | setup-java              |
+| RubyGems            | setup-ruby              |
+| go.sum              | setup-go                |
+| .NET NuGet          | setup-dotnet            |
+
+Cache juga dapat dilakukan secara manual menggunakan action `cache`. Berikut adalah contoh penggunaan cache dependencies.
+
+```yaml
+name: Caching with npm
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          # npm cache files are stored in `~/.npm` on Linux/macOS
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+        name: List the state of node modules
+        continue-on-error: true
+        run: npm list
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+```
+
+Penjelasan lebih lengkap mengenai cache dependencies dapat dilihat [di sini](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows).
+
+### Workflow Artifacts
+
+File yang dihasilkan dari workflow disebut sebagai artifacts. Mirip dengan cache, artifact juga dapat diakses melalui beberapa jobs. Perbedaan penggunaan cache dan artifact adalah sebagai berikut.
+
+- Cache digunakan untuk menggunakan file yang tidak terlalu sering berubah antara jobs atau workflow runs yang berbeda, seperti hasil dependencies build dari package management system.
+
+- Artifact digunakan untuk menyimpan file yang dihasilkan dari job yang akan digunakan pada job selanjutnya atau untuk diunduh oleh pengguna, seperti hasil build dari aplikasi atau log dari proses build.
+
+Berikut adalah contoh penggunaan artifact pada workflow.
+
+```yaml
+name: Node CI
+
+on: [push]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: npm install, build, and test
+        run: |
+          npm install
+          npm run build --if-present
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-without-markdown
+          path: |
+            dist
+            !dist/**/*.md
+```
+
+Penjelasan lebih lengkap mengenai workflow artifacts dapat dilihat [di sini](https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts).
