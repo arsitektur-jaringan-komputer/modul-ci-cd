@@ -1,0 +1,6 @@
+Dockerfile
+*.md
+.git*
+cicd.sh
+.env.example
+composer.lock
